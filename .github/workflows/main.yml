@@ -1,9 +1,10 @@
-name: Build Customized Addendum (Win64)
+name: Build Customized Addendum (Win64 & Android)
 
 on:
-  push:  # Allows manually clicking "Run Workflow"
+  workflow_dispatch:
 
 jobs:
+  # --- WINDOWS 64-BIT COMPILATION ---
   build-windows:
     runs-on: windows-latest
     steps:
@@ -12,20 +13,22 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Strip Time Stones & Miracle Forms
-        shell: bash
+      - name: Strip Time Stones & Miracle Forms (PowerShell)
+        shell: powershell
         run: |
-          # Finds and disables Time Stones/Miracle Forms in the source code files
-          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseTimeStones = true/bUseTimeStones = false/g' || true
-          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseMiracleForm = true/bUseMiracleForm = false/g' || true
-          echo "Source code successfully modified!"
+          Get-ChildItem -Recurse -Include *.c, *.h | ForEach-Object {
+              (Get-Content $_.FullName) | 
+              ForEach-Object { $_ -replace 'bUseTimeStones = true', 'bUseTimeStones = false' } |
+              ForEach-Object { $_ -replace 'bUseMiracleForm = true', 'bUseMiracleForm = false' } |
+              Set-Content $_.FullName
+          }
+          Write-Host "Source features stripped for Windows!"
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
       - name: Compile Mod for Win64
         run: |
-          # Changed Platform to x64 for 64-bit Windows systems
           msbuild SonicMania.sln /p:Configuration=Release /p:Platform=x64
           
       - name: Upload Custom Win64 Build Artifacts
@@ -33,3 +36,67 @@ jobs:
         with:
           name: Sonic-Mania-Addendum-Win64
           path: ./build/
+
+  # --- ANDROID COMPILATION (ARM64 & V7A) ---
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Android NDK
+        uses: android-actions/setup-android@v3
+        with:
+          ndk-version: '25.2.9519653'
+
+      - name: Strip Time Stones & Miracle Forms (Bash)
+        run: |
+          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseTimeStones = true/bUseTimeStones = false/g' || true
+          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseMiracleForm = true/bUseMiracleForm = false/g' || true
+          echo "Source features stripped for Android!"
+
+      - name: Compile Game Logic for arm64-v8a (64-bit)
+        run: |
+          mkdir -p build_arm64 && cd build_arm64
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-28 \
+            -DCMAKE_BUILD_TYPE=Release
+          make
+          
+          # Rename output library
+          if [ -f libGame.so ]; then mv libGame.so libSonicMania.so; fi
+          if [ -f *.so ]; then mv *.so libSonicMania.so; fi
+
+      - name: Compile Game Logic for armeabi-v7a (32-bit)
+        run: |
+          mkdir -p build_v7a && cd build_v7a
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=armeabi-v7a \
+            -DANDROID_PLATFORM=android-28 \
+            -DCMAKE_BUILD_TYPE=Release
+          make
+          
+          # Rename output library 
+          if [ -f libGame.so ]; then mv libGame.so libSonicMania.so; fi
+          if [ -f *.so ]; then mv *.so libSonicMania.so; fi
+
+      - name: Structure Android Folders for Upload
+        run: |
+          mkdir -p output/arm64-v8a
+          mkdir -p output/armeabi-v7a
+          
+          # Move compiled files into organized deployment architecture
+          cp build_arm64/libSonicMania.so output/arm64-v8a/
+          cp build_v7a/libSonicMania.so output/armeabi-v7a/
+
+      - name: Upload Complete Android Mod Libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sonic-Mania-Addendum-Android-All-ABIs
+          path: ./output/
+Use code with caution.Deployment Layout (When Downloaded)When the workflow completes, downloading the Android artifact will give you a zipped structure matching the official folder hierarchy of your engine application:output/arm64-v8a/libSonicMania.so (For your modern 64-bit layouts)output/armeabi-v7a/libSonicMania.so (For older 32-bit layouts)Commit this script, select Run workflow, and let both Windows and Android formats compile!Let me know if you run into any CMake configuration errors or if the workflow successfully pushes out all the zip packages!
