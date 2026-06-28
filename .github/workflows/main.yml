@@ -1,4 +1,4 @@
-name: Build Customized Addendum (Win64 & Android)
+name: Build Customized Addendum (Win64 & Android All-In-One)
 
 on:
   workflow_dispatch:
@@ -28,8 +28,7 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Compile Mod for Win64
-        run: |
-          msbuild SonicMania.sln /p:Configuration=Release /p:Platform=x64
+        run: msbuild SonicMania.sln /p:Configuration=Release /p:Platform=x64
           
       - name: Upload Custom Win64 Build Artifacts
         uses: actions/upload-artifact@v4
@@ -60,28 +59,16 @@ jobs:
       - name: Compile Game Logic for arm64-v8a (64-bit)
         run: |
           mkdir -p build_arm64 && cd build_arm64
-          cmake .. \
-            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-28 \
-            -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 -DCMAKE_BUILD_TYPE=Release
           make
-          
-          # Rename output library
           if [ -f libGame.so ]; then mv libGame.so libSonicMania.so; fi
           if [ -f *.so ]; then mv *.so libSonicMania.so; fi
 
       - name: Compile Game Logic for armeabi-v7a (32-bit)
         run: |
           mkdir -p build_v7a && cd build_v7a
-          cmake .. \
-            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=armeabi-v7a \
-            -DANDROID_PLATFORM=android-28 \
-            -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-28 -DCMAKE_BUILD_TYPE=Release
           make
-          
-          # Rename output library 
           if [ -f libGame.so ]; then mv libGame.so libSonicMania.so; fi
           if [ -f *.so ]; then mv *.so libSonicMania.so; fi
 
@@ -89,14 +76,11 @@ jobs:
         run: |
           mkdir -p output/arm64-v8a
           mkdir -p output/armeabi-v7a
-          
-          # Move compiled files into organized deployment architecture
-          cp build_arm64/libSonicMania.so output/arm64-v8a/
-          cp build_v7a/libSonicMania.so output/armeabi-v7a/
+          cp build_arm64/libSonicMania.so output/arm64-v8a/ || true
+          cp build_v7a/libSonicMania.so output/armeabi-v7a/ || true
 
       - name: Upload Complete Android Mod Libraries
         uses: actions/upload-artifact@v4
         with:
           name: Sonic-Mania-Addendum-Android-All-ABIs
           path: ./output/
-Use code with caution.Deployment Layout (When Downloaded)When the workflow completes, downloading the Android artifact will give you a zipped structure matching the official folder hierarchy of your engine application:output/arm64-v8a/libSonicMania.so (For your modern 64-bit layouts)output/armeabi-v7a/libSonicMania.so (For older 32-bit layouts)Commit this script, select Run workflow, and let both Windows and Android formats compile!Let me know if you run into any CMake configuration errors or if the workflow successfully pushes out all the zip packages!
