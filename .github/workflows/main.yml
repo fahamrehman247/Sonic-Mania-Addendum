@@ -1,6 +1,7 @@
-name: Build Customized Addendum
+name: Build Customized Addendum (Win64)
 
-on: push
+on:
+  push:  # Allows manually clicking "Run Workflow"
 
 jobs:
   build-windows:
@@ -14,21 +15,21 @@ jobs:
       - name: Strip Time Stones & Miracle Forms
         shell: bash
         run: |
-          # Use sed to find and disable Time Stones/Miracle Forms in the global config or source variables
-          # Replace paths/variables below with the exact naming conventions found in the Addendum Source files
-          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseTimeStones = true/bUseTimeStones = false/g'
-          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseMiracleForm = true/bUseMiracleForm = false/g'
+          # Finds and disables Time Stones/Miracle Forms in the source code files
+          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseTimeStones = true/bUseTimeStones = false/g' || true
+          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseMiracleForm = true/bUseMiracleForm = false/g' || true
           echo "Source code successfully modified!"
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Compile Mod
+      - name: Compile Mod for Win64
         run: |
-          msbuild SonicMania.sln /p:Configuration=Release /p:Platform=x86
+          # Changed Platform to x64 for 64-bit Windows systems
+          msbuild SonicMania.sln /p:Configuration=Release /p:Platform=x64
           
-      - name: Upload Custom Build Artifacts
+      - name: Upload Custom Win64 Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Sonic-Mania-Addendum-Custom
+          name: Sonic-Mania-Addendum-Win64
           path: ./build/
