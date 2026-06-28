@@ -1,0 +1,34 @@
+name: Build Customized Addendum
+
+on: push
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Strip Time Stones & Miracle Forms
+        shell: bash
+        run: |
+          # Use sed to find and disable Time Stones/Miracle Forms in the global config or source variables
+          # Replace paths/variables below with the exact naming conventions found in the Addendum Source files
+          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseTimeStones = true/bUseTimeStones = false/g'
+          find . -type f -name "*.c" -o -name "*.h" | xargs sed -i 's/bUseMiracleForm = true/bUseMiracleForm = false/g'
+          echo "Source code successfully modified!"
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Compile Mod
+        run: |
+          msbuild SonicMania.sln /p:Configuration=Release /p:Platform=x86
+          
+      - name: Upload Custom Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sonic-Mania-Addendum-Custom
+          path: ./build/
