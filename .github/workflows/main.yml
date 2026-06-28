@@ -1,7 +1,6 @@
 name: Build Customized Addendum (Win64 & Android All-In-One)
 
-on:
-  workflow_dispatch:
+on: push
 
 jobs:
   # --- WINDOWS 64-BIT COMPILATION ---
